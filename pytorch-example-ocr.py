@@ -3,6 +3,8 @@ import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
+USE_CUDA = 0
+
 
 # Define the neural network architecture
 class Net(nn.Module):
@@ -38,7 +40,8 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=F
 
 # Initialize the neural network
 net = Net()
-net.cuda()
+if USE_CUDA:
+    net.cuda()
 
 # Define the loss function and the optimizer
 criterion = nn.CrossEntropyLoss()
@@ -49,6 +52,8 @@ for epoch in range(10):
     running_loss = 0.0
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
+        if USE_CUDA:
+            inputs, labels = inputs.cuda(), labels.cuda()
         optimizer.zero_grad()
         outputs = net(inputs)
         loss = criterion(outputs, labels)
@@ -65,6 +70,8 @@ total = 0
 with torch.no_grad():
     for data in test_loader:
         inputs, labels = data
+        if USE_CUDA:
+            inputs, labels = inputs.cuda(), labels.cuda()
         outputs = net(inputs)
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)

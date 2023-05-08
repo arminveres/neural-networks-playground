@@ -3,16 +3,19 @@ import cv2
 import torch
 from albumentations.pytorch import ToTensorV2
 
-# TODO move this into argument parser
+# TODO: move this into argument parser
 
 DATASET = "PASCAL_VOC"
+NUM_CLASSES = 20
+# DATASET = "COCO"
+# NUM_CLASSES = 80
+CHECKPOINT_FILE = DATASET + "_checkpoint.pth.tar"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # from utils import seed_everything
 # seed_everything()  # If you want deterministic behavior
 NUM_WORKERS = 4
 BATCH_SIZE = 32
 IMAGE_SIZE = 416
-NUM_CLASSES = 20
 LEARNING_RATE = 1e-5
 WEIGHT_DECAY = 1e-4
 NUM_EPOCHS = 100
@@ -23,7 +26,6 @@ S = [IMAGE_SIZE // 32, IMAGE_SIZE // 16, IMAGE_SIZE // 8]
 PIN_MEMORY = True
 LOAD_MODEL = True
 SAVE_MODEL = True
-CHECKPOINT_FILE = "checkpoint.pth.tar"
 IMG_DIR = DATASET + "/images/"
 LABEL_DIR = DATASET + "/labels/"
 

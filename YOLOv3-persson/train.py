@@ -82,7 +82,7 @@ def main():
         train_fn(train_loader, model, optimizer, loss_fn, scaler, scaled_anchors)
 
         if config.SAVE_MODEL:
-            save_checkpoint(model, optimizer, filename=f"checkpoint.pth.tar")
+            save_checkpoint(model, optimizer, filename=config.CHECKPOINT_FILE)
 
         print(f"Currently epoch {epoch}")
         print("On Train Eval loader:")

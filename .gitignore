@@ -130,3 +130,4 @@ dmypy.json
 data/
 YOLOv3-persson/PASCAL_VOC
 model.pt
+COCO/

@@ -14,10 +14,11 @@ from utils import (
     cells_to_bboxes,
     iou_width_height as iou,
     non_max_suppression as nms,
-    plot_image
+    plot_image,
 )
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 class YOLODataset(Dataset):
     def __init__(
@@ -37,7 +38,9 @@ class YOLODataset(Dataset):
         self.image_size = image_size
         self.transform = transform
         self.S = S
-        self.anchors = torch.tensor(anchors[0] + anchors[1] + anchors[2])  # for all 3 scales
+        self.anchors = torch.tensor(
+            anchors[0] + anchors[1] + anchors[2]
+        )  # for all 3 scales
         self.num_anchors = self.anchors.shape[0]
         self.num_anchors_per_scale = self.num_anchors // 3
         self.C = C
@@ -48,7 +51,9 @@ class YOLODataset(Dataset):
 
     def __getitem__(self, index):
         label_path = os.path.join(self.label_dir, self.annotations.iloc[index, 1])
-        bboxes = np.roll(np.loadtxt(fname=label_path, delimiter=" ", ndmin=2), 4, axis=1).tolist()
+        bboxes = np.roll(
+            np.loadtxt(fname=label_path, delimiter=" ", ndmin=2), 4, axis=1
+        ).tolist()
         img_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
         image = np.array(Image.open(img_path).convert("RGB"))
 
@@ -84,8 +89,13 @@ class YOLODataset(Dataset):
                     targets[scale_idx][anchor_on_scale, i, j, 5] = int(class_label)
                     has_anchor[scale_idx] = True
 
-                elif not anchor_taken and iou_anchors[anchor_idx] > self.ignore_iou_thresh:
-                    targets[scale_idx][anchor_on_scale, i, j, 0] = -1  # ignore prediction
+                elif (
+                    not anchor_taken
+                    and iou_anchors[anchor_idx] > self.ignore_iou_thresh
+                ):
+                    targets[scale_idx][
+                        anchor_on_scale, i, j, 0
+                    ] = -1  # ignore prediction
 
         return image, tuple(targets)
 
@@ -96,9 +106,9 @@ def test():
     transform = config.test_transforms
 
     dataset = YOLODataset(
-        "COCO/train.csv",
-        "COCO/images/images/",
-        "COCO/labels/labels_new/",
+        config.DATASET + "/train.csv",
+        config.IMG_DIR,
+        config.LABEL_DIR,
         S=[13, 26, 52],
         anchors=anchors,
         transform=transform,
@@ -110,7 +120,6 @@ def test():
     loader = DataLoader(dataset=dataset, batch_size=1, shuffle=True)
     for x, y in loader:
         boxes = []
-
         for i in range(y[0].shape[1]):
             anchor = scaled_anchors[i]
             print(anchor.shape)

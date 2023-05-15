@@ -4,6 +4,7 @@ from utils import non_max_suppression, cells_to_bboxes
 import config
 import cv2
 import numpy as np
+import time
 
 
 def prep_image(img, inp_dim):
@@ -33,8 +34,10 @@ def add_boxes_to_image(image, boxes):
     # Create a Rectangle patch
     for box in boxes:
         assert (
-            len(box) == 6
-        ), "box should contain class pred, confidence, x, y, width, height"
+            len(box) == 6,
+            "box should contain class pred, confidence, x, y, width, height",
+        )
+
         class_pred = box[0]
         conf = box[1]
         box = box[2:]
@@ -78,17 +81,19 @@ def add_boxes_to_image(image, boxes):
 
 
 def main():
-
     # TODO: (aver) offload to gpu, otherwise very slow rendering
-    model = YOLOv3(num_classes=config.NUM_CLASSES)  # .to(config.DEVICE)
+    model = YOLOv3(num_classes=config.NUM_CLASSES).to(config.DEVICE)
     checkpoint = torch.load(config.CHECKPOINT_FILE, map_location=config.DEVICE)
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
 
+    frames = 0
+    start = time.time()
     webcam = cv2.VideoCapture(0)  # try different number if not working
     assert webcam.isOpened()
 
     while True:
+        frames += 1
         check, test_image = webcam.read()
         if not check:
             break
@@ -96,15 +101,19 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
+        if frames % 10 == 0:
+            print("FPS: {:5.2f}".format(frames / (time.time() - start)))
+
         input_image = prep_image(test_image, config.IMAGE_SIZE)
 
-        scaled_anchors = torch.tensor(config.ANCHORS) * torch.tensor(
-            config.S
-        ).unsqueeze(1).unsqueeze(1).repeat(
-            1, 3, 2
-        )  # .to(config.DEVICE)
+        scaled_anchors = (
+            torch.tensor(config.ANCHORS)
+            * torch.tensor(config.S).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
+        ).to(config.DEVICE)
 
-        # input_image = input_image.to(config.DEVICE)
+        # convert image to GPU
+        input_image = input_image.to(config.DEVICE)
+
         with torch.no_grad():
             out = model(input_image)
             bboxes = [[] for _ in range(input_image.shape[0])]
@@ -123,7 +132,6 @@ def main():
                 box_format="midpoint",
             )
         # for i in range(batch_size):
-        # plot_image(input_image[0].permute(1, 2, 0).detach().cpu(), nms_boxes)
         add_boxes_to_image(test_image, nms_boxes)
 
         cv2.imshow("final output", test_image)

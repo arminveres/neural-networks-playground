@@ -12,7 +12,7 @@ For that I will be using their docker setup since fedora is a pain to install RO
 docker pull rocm/pytorch:latest
 ```
 
-ATTENTION: This will use **35GB of your storage!!!**
+> **WARNING**: This will use **35GB of your storage!!!**
 
 ### Alternative
 

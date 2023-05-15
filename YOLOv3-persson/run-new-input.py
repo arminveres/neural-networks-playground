@@ -13,11 +13,11 @@ def prep_image(img, inp_dim):
     Returns a Variable
     """
     orig_im = img
-    dim = orig_im.shape[1], orig_im.shape[0]
+    # dim = orig_im.shape[1], orig_im.shape[0]
     img = cv2.resize(orig_im, (inp_dim, inp_dim))
     img_ = img[:, :, ::-1].transpose((2, 0, 1)).copy()
     img_ = torch.from_numpy(img_).float().div(255.0).unsqueeze(0)
-    return img_, orig_im, dim
+    return img_  # , orig_im, dim
 
 
 def add_boxes_to_image(image, boxes):
@@ -36,11 +36,11 @@ def add_boxes_to_image(image, boxes):
             len(box) == 6
         ), "box should contain class pred, confidence, x, y, width, height"
         class_pred = box[0]
+        conf = box[1]
         box = box[2:]
 
         upper_left_x = box[0] - box[2] / 2
         upper_left_y = box[1] - box[3] / 2
-
         pt1 = (upper_left_x * width, upper_left_y * height)
         pt1 = np.array(pt1).astype(int)
         pt2 = (box[2] * width, box[3] * height)
@@ -54,9 +54,10 @@ def add_boxes_to_image(image, boxes):
             2,
         )
 
-        label = class_labels[int(class_pred)]
-        t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
-        end_point = pt1[0] + t_size[0] + 3, pt1[1] + t_size[1] + 4
+        label = f"{class_labels[int(class_pred)]}, {conf:.2}"
+        text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
+
+        end_point = pt1[0] + text_size[0] + 3, pt1[1] + text_size[1] + 4
         cv2.rectangle(
             image,
             pt1,
@@ -68,7 +69,7 @@ def add_boxes_to_image(image, boxes):
         cv2.putText(
             image,
             label,
-            (pt1[0], pt1[1] + t_size[1] + 4),
+            (pt1[0], pt1[1] + text_size[1] + 4),
             cv2.FONT_HERSHEY_PLAIN,
             1,
             [225, 255, 255],
@@ -77,13 +78,16 @@ def add_boxes_to_image(image, boxes):
 
 
 def main():
+
+    # TODO: (aver) offload to gpu, otherwise very slow rendering
     model = YOLOv3(num_classes=config.NUM_CLASSES)  # .to(config.DEVICE)
     checkpoint = torch.load(config.CHECKPOINT_FILE, map_location=config.DEVICE)
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
 
-    # test_image = cv2.imread("./test-image.jpg")
     webcam = cv2.VideoCapture(0)  # try different number if not working
+    assert webcam.isOpened()
+
     while True:
         check, test_image = webcam.read()
         if not check:
@@ -92,7 +96,7 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
-        input_image, orig_image, dim = prep_image(test_image, config.IMAGE_SIZE)
+        input_image = prep_image(test_image, config.IMAGE_SIZE)
 
         scaled_anchors = torch.tensor(config.ANCHORS) * torch.tensor(
             config.S
@@ -105,7 +109,7 @@ def main():
             out = model(input_image)
             bboxes = [[] for _ in range(input_image.shape[0])]
             for i in range(3):
-                batch_size, A, S, _, _ = out[i].shape
+                batch_size, _, S, _, _ = out[i].shape
                 anchor = scaled_anchors[i]
                 boxes_scale_i = cells_to_bboxes(out[i], anchor, S=S, is_preds=True)
                 for idx, (box) in enumerate(boxes_scale_i):

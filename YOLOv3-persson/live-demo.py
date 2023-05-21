@@ -45,12 +45,10 @@ def add_boxes_to_image(image, boxes):
         conf = box[1]
         box = box[2:]
 
-        upper_left_x = box[0] - box[2] / 2
-        upper_left_y = box[1] - box[3] / 2
-        pt1 = (upper_left_x * width, upper_left_y * height)
-        pt1 = np.array(pt1).astype(int)
-        pt2 = (box[2] * width, box[3] * height)
-        pt2 = np.array(pt2).astype(int)
+        upper_left_x = (box[0] - box[2] / 2) * width
+        upper_left_y = (box[1] - box[3] / 2) * height
+        pt1 = (int(upper_left_x), int(upper_left_y))
+        pt2 = (int(box[2] * width), int(box[3] * height))
 
         cv2.rectangle(
             image,

@@ -5,7 +5,6 @@ import numpy as np
 import os
 import random
 import torch
-
 from collections import Counter
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -77,7 +76,12 @@ def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     return intersection / (box1_area + box2_area - intersection + 1e-6)
 
 
-def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
+def non_max_suppression(
+    bboxes: list[list[float]],
+    iou_threshold: float,
+    threshold: float,
+    box_format="corners",
+) -> list:
     """
     Video explanation of this function:
     https://youtu.be/YDkjWEN8jNA
@@ -87,7 +91,8 @@ def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
     Parameters:
         bboxes (list): list of lists containing all bboxes with each bboxes
         specified as [class_pred, prob_score, x1, y1, x2, y2]
-        iou_threshold (float): threshold where predicted bboxes is correct
+        iou_threshold (float): threshold where predicted bboxes is correct, the lower the stricter the suprression of
+        the boxes, usually between [0.3, 0.5]
         threshold (float): threshold to remove predicted bboxes (independent of IoU)
         box_format (str): "midpoint" or "corners" used to specify bboxes
 
@@ -258,6 +263,7 @@ def plot_image(image, boxes):
             len(box) == 6
         ), "box should contain class pred, confidence, x, y, width, height"
         class_pred = box[0]
+        conf = box[1]
         box = box[2:]
         upper_left_x = box[0] - box[2] / 2
         upper_left_y = box[1] - box[3] / 2
@@ -274,7 +280,7 @@ def plot_image(image, boxes):
         plt.text(
             upper_left_x * width,
             upper_left_y * height,
-            s=class_labels[int(class_pred)],
+            s=f"{class_labels[int(class_pred)]}, conf: {conf:.2}",
             color="white",
             verticalalignment="top",
             bbox={"color": colors[int(class_pred)], "pad": 0},

@@ -1,14 +1,16 @@
-import torch
 from model import YOLOv3
 from utils import non_max_suppression, cells_to_bboxes
+
+from numpy.typing import NDArray
+import numpy as np
+import torch
 import config
 import cv2
-import numpy as np
 import time
 import urllib.request
 
 
-def prep_image(img, inp_dim):
+def prep_image(img, inp_dim) -> torch.Tensor:
     """
     Prepare image for inputting to the neural network.
 
@@ -22,15 +24,18 @@ def prep_image(img, inp_dim):
     return img_  # , orig_im, dim
 
 
-def add_boxes_to_image(image, boxes):
+def add_boxes_to_image(image: NDArray, boxes) -> None:
     """
     Plots predicted bounding boxes on the image to CV2
     """
     class_labels = (
         config.COCO_LABELS if config.DATASET == "COCO" else config.PASCAL_CLASSES
     )
-    im = np.array(image)
-    height, width, _ = im.shape
+    # im = np.array(image)
+    # height, width, _ = im.shape
+
+    # already numpy array
+    height, width, _ = image.shape
 
     # Create a Rectangle patch
     for box in boxes:
@@ -80,79 +85,78 @@ def add_boxes_to_image(image, boxes):
 
 
 def main():
-    # TODO: (aver) offload to gpu, otherwise very slow rendering
     model = YOLOv3(num_classes=config.NUM_CLASSES).to(config.DEVICE)
     checkpoint = torch.load(config.CHECKPOINT_FILE, map_location=config.DEVICE)
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
 
     url = "http://172.30.136.53:5000/video_feed"
+    USE_WEB = False
 
-    # start = time.time()
-    # frames = 0
-    # webcam = cv2.VideoCapture(0)  # try different number if not working
-    # assert webcam.isOpened()
-
-    stream = urllib.request.urlopen(url)
-    bytes_buffer = b""
+    if USE_WEB:
+        stream = urllib.request.urlopen(url)
+        bytes_buffer = b""
+    else:
+        start = time.time()
+        frames = 0
+        webcam = cv2.VideoCapture(0)  # try different number if not working
+        assert webcam.isOpened()
 
     while True:
-        # frames += 1
-        # check, test_image = webcam.read()
-        # if not check:
-        #     break
-
-        bytes_buffer += stream.read(1024)
-        a = bytes_buffer.find(b"\xff\xd8")
-        b = bytes_buffer.find(b"\xff\xd9")
-        if a != -1 and b != -1:
-            jpg = bytes_buffer[a : b + 2]
-            bytes_buffer = bytes_buffer[b + 2 :]
-
-            test_image = cv2.imdecode(
-                np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR
-            )
-
-            # Exit the loop if the user presses the 'q' key
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-
-            # if frames % 10 == 0:
-            #     print("FPS: {:5.2f}".format(frames / (time.time() - start)))
-
-            input_image = prep_image(test_image, config.IMAGE_SIZE)
-
-            scaled_anchors = (
-                torch.tensor(config.ANCHORS)
-                * torch.tensor(config.S).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
-            ).to(config.DEVICE)
-
-            # convert image to GPU
-            input_image = input_image.to(config.DEVICE)
-
-            with torch.no_grad():
-                out = model(input_image)
-                bboxes = [[] for _ in range(input_image.shape[0])]
-                for i in range(3):
-                    batch_size, _, S, _, _ = out[i].shape
-                    anchor = scaled_anchors[i]
-                    boxes_scale_i = cells_to_bboxes(out[i], anchor, S=S, is_preds=True)
-                    for idx, (box) in enumerate(boxes_scale_i):
-                        bboxes[idx] += box
-
-            for i in range(batch_size):
-                nms_boxes = non_max_suppression(
-                    bboxes[i],
-                    iou_threshold=0.6,
-                    threshold=0.5,
-                    box_format="midpoint",
+        if USE_WEB:
+            bytes_buffer += stream.read(1024)
+            a = bytes_buffer.find(b"\xff\xd8")
+            b = bytes_buffer.find(b"\xff\xd9")
+            if a != -1 and b != -1:
+                jpg = bytes_buffer[a : b + 2]
+                bytes_buffer = bytes_buffer[b + 2 :]
+                cam_image = cv2.imdecode(
+                    np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR
                 )
-            # for i in range(batch_size):
-            add_boxes_to_image(test_image, nms_boxes)
+        else:
+            frames += 1
+            check, cam_image = webcam.read()
+            if not check:
+                break
+            if frames % 10 == 0:
+                print("FPS: {:5.2f}".format(frames / (time.time() - start)))
 
-            cv2.imshow("final output", test_image)
+        # Exit the loop if the user presses the 'q' key
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
-    # webcam.release()
+        # Prepare image and convert to GPU
+        input_image = prep_image(cam_image, config.IMAGE_SIZE).to(config.DEVICE)
+
+        scaled_anchors = (
+            torch.tensor(config.ANCHORS)
+            * torch.tensor(config.S).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2)
+        ).to(config.DEVICE)
+
+        with torch.no_grad():
+            out = model(input_image)
+            bboxes = [[] for _ in range(input_image.shape[0])]
+            for i in range(3):
+                batch_size, _, S, _, _ = out[i].shape
+                anchor = scaled_anchors[i]
+                boxes_scale_i = cells_to_bboxes(out[i], anchor, S=S, is_preds=True)
+                for idx, (box) in enumerate(boxes_scale_i):
+                    bboxes[idx] += box
+
+        for i in range(batch_size):
+            nms_boxes = non_max_suppression(
+                bboxes[i],
+                iou_threshold=0.5,
+                threshold=0.3,
+                box_format="midpoint",
+            )
+        # for i in range(batch_size):
+        add_boxes_to_image(cam_image, nms_boxes)
+
+        cv2.imshow("final output", cam_image)
+
+    if not USE_WEB:
+        webcam.release()
     cv2.destroyAllWindows()
     return
 

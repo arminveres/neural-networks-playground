@@ -85,11 +85,12 @@ def main():
             save_checkpoint(model, optimizer, filename=config.CHECKPOINT_FILE)
 
         print(f"Currently epoch {epoch}")
-        print("On Train Eval loader:")
+        # print("On Train Eval loader:")
         print("On Train loader:")
         check_class_accuracy(model, train_loader, threshold=config.CONF_THRESHOLD)
 
         if epoch > 0 and epoch % 3 == 0:
+            print("On Test loader:")
             check_class_accuracy(model, test_loader, threshold=config.CONF_THRESHOLD)
             pred_boxes, true_boxes = get_evaluation_bboxes(
                 test_loader,

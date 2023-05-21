@@ -7,8 +7,6 @@ import numpy as np
 import time
 import urllib.request
 
-url = "http://127.0.0.1:5000/video_feed"
-
 
 def prep_image(img, inp_dim):
     """
@@ -88,8 +86,10 @@ def main():
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
 
-    frames = 0
-    start = time.time()
+    url = "http://172.30.136.53:5000/video_feed"
+
+    # start = time.time()
+    # frames = 0
     # webcam = cv2.VideoCapture(0)  # try different number if not working
     # assert webcam.isOpened()
 
@@ -97,8 +97,7 @@ def main():
     bytes_buffer = b""
 
     while True:
-        frames += 1
-
+        # frames += 1
         # check, test_image = webcam.read()
         # if not check:
         #     break
@@ -118,8 +117,8 @@ def main():
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
-            if frames % 10 == 0:
-                print("FPS: {:5.2f}".format(frames / (time.time() - start)))
+            # if frames % 10 == 0:
+            #     print("FPS: {:5.2f}".format(frames / (time.time() - start)))
 
             input_image = prep_image(test_image, config.IMAGE_SIZE)
 

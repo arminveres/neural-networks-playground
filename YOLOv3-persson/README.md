@@ -1,7 +1,7 @@
 # YOLOv3 in PyTorch
 
 > **Note**: We didnt manage to get a higher class accuracy than 65%
-> TODO: Investigate
+> **Note**: We were not able to train on the COCO dataset
 
 A quite minimal implementation of YOLOv3 in PyTorch spanning only around 800 lines of code related to YOLOv3 (not
 counting plot image helper functions etc). The repository has support for training and evaluation and complete with
@@ -14,8 +14,13 @@ helper functions for inference. There is currently pretrained weights for Pascal
 ```bash
 $ git clone https://github.com/aladdinpersson/Machine-Learning-Collection
 $ cd ML/Pytorch/object_detection/YOLOv3/
-$ pip install requirements.txt
+$ conda env create -f env.yml
 ```
+
+### GPU Acceleration
+
+Depending on Environment or GPU install the correct packages [here](https://pytorch.org/get-started/locally/) to get
+GPU acceleration.
 
 ### Download pretrained weights on Pascal-VOC
 
